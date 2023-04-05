@@ -96,7 +96,7 @@ namespace BepInEx.Preloader
 				AssemblyPatcher.PatchAndLoad(Paths.DllSearchPaths);
 				AssemblyPatcher.DisposePatchers();
 
-				Logger.LogMessage($"Users is running BepInEx version {tsVersion} from Thunderstore");
+				Logger.LogMessage($"User is running BepInExPack Valheim version {tsVersion} from Thunderstore");
 				Logger.LogMessage("Preloader finished");
 
 				Logger.Listeners.Remove(PreloaderLog);
