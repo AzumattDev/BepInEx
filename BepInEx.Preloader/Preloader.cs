@@ -25,6 +25,7 @@ namespace BepInEx.Preloader
 		///     The log writer that is specific to the preloader.
 		/// </summary>
 		private static PreloaderConsoleListener PreloaderLog { get; set; }
+		private static string tsVersion = "5.4.2103";
 
 		public static bool IsPostUnity2017 { get; } = File.Exists(Path.Combine(Paths.ManagedPath, "UnityEngine.CoreModule.dll"));
 
@@ -95,6 +96,7 @@ namespace BepInEx.Preloader
 				AssemblyPatcher.PatchAndLoad(Paths.DllSearchPaths);
 				AssemblyPatcher.DisposePatchers();
 
+				Logger.LogMessage($"Users is running BepInEx version {tsVersion} from Thunderstore");
 				Logger.LogMessage("Preloader finished");
 
 				Logger.Listeners.Remove(PreloaderLog);
@@ -146,7 +148,12 @@ namespace BepInEx.Preloader
 			if (assembly.MainModule.AssemblyReferences.Any(x => x.Name.Contains("BepInEx")))
 				throw new Exception("BepInEx has been detected to be patched! Please unpatch before using a patchless variant!");
 
-			string entrypointType = ConfigEntrypointType.Value;
+			string entrypointType;
+
+			if (ForceConfigEntrypointType.Value || string.IsNullOrEmpty(ConfigEntrypointType.Value))
+				entrypointType = DefaultEntrypointType;
+			else
+				entrypointType = ConfigEntrypointType.Value;
 			string entrypointMethod = ConfigEntrypointMethod.Value;
 
 			bool isCctor = entrypointMethod.IsNullOrWhiteSpace() || entrypointMethod == ".cctor";
@@ -276,14 +283,21 @@ namespace BepInEx.Preloader
 
 		#region Config
 
+		private static string DefaultEntrypointType => "GameObject";
+		
 		private static readonly ConfigEntry<string> ConfigEntrypointAssembly = ConfigFile.CoreConfig.Bind(
 			"Preloader.Entrypoint", "Assembly",
 			IsPostUnity2017 ? "UnityEngine.CoreModule.dll" : "UnityEngine.dll",
 			"The local filename of the assembly to target.");
 
+		private static readonly ConfigEntry<bool> ForceConfigEntrypointType = ConfigFile.CoreConfig.Bind(
+			"Preloader.Entrypoint", "ForceEntryType",
+			true,
+			"Forces the entry point type to be 'GameObject' instead of the the value specified in the setting 'Preloader.Entrypoint.Type' setting.");
+		
 		private static readonly ConfigEntry<string> ConfigEntrypointType = ConfigFile.CoreConfig.Bind(
 			"Preloader.Entrypoint", "Type",
-			"Application",
+			"GameObject",
 			"The name of the type in the entrypoint assembly to search for the entrypoint method.");
 
 		private static readonly ConfigEntry<string> ConfigEntrypointMethod = ConfigFile.CoreConfig.Bind(
