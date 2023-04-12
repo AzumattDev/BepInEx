@@ -59,6 +59,7 @@ namespace BepInEx.Preloader
 					ConsoleManager.SetConsoleTitle(consoleTile);
 
 				Logger.LogMessage($"{consoleTile} ({File.GetLastWriteTime(Paths.ExecutablePath)})");
+				Logger.LogMessage($"User is running BepInExPack Valheim version {tsVersion} from Thunderstore");
 
 				//See BuildInfoAttribute for more information about this section.
 				object[] attributes = typeof(BuildInfoAttribute).Assembly.GetCustomAttributes(typeof(BuildInfoAttribute), false);
@@ -95,8 +96,7 @@ namespace BepInEx.Preloader
 
 				AssemblyPatcher.PatchAndLoad(Paths.DllSearchPaths);
 				AssemblyPatcher.DisposePatchers();
-
-				Logger.LogMessage($"User is running BepInExPack Valheim version {tsVersion} from Thunderstore");
+				
 				Logger.LogMessage("Preloader finished");
 
 				Logger.Listeners.Remove(PreloaderLog);
