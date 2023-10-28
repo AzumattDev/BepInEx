@@ -26,7 +26,24 @@ namespace BepInEx.Preloader.RuntimeFixes
 		[HarmonyPatch]
 		internal static class GetLocation
 		{
-			public static MethodInfo TargetMethod() => AccessTools.DeclaredPropertyGetter(typeof(UnityPatches).Assembly.GetType(), nameof(Assembly.Location));
+			public static MethodInfo TargetMethod()
+			{
+				try
+				{
+					var method = AccessTools.DeclaredPropertyGetter(typeof(UnityPatches).Assembly.GetType(), nameof(Assembly.Location));
+
+					if (method == null)
+					{
+						return AccessTools.DeclaredPropertyGetter(typeof(Assembly), nameof(Assembly.Location));
+					}
+
+					return method;
+				}
+				catch (Exception e)
+				{
+					throw;
+				}
+			}
 
 			public static void Postfix(ref string __result, Assembly __instance)
 			{
@@ -38,7 +55,25 @@ namespace BepInEx.Preloader.RuntimeFixes
 		[HarmonyPatch]
 		internal static class GetCodeBase
 		{
-			public static MethodInfo TargetMethod() => AccessTools.DeclaredPropertyGetter(typeof(UnityPatches).Assembly.GetType(), nameof(Assembly.CodeBase));
+			public static MethodInfo TargetMethod()
+			{
+				try
+				{
+					var method = AccessTools.DeclaredPropertyGetter(typeof(UnityPatches).Assembly.GetType(), nameof(Assembly.CodeBase));
+
+					if (method == null)
+					{
+						return AccessTools.DeclaredPropertyGetter(typeof(Assembly), nameof(Assembly.CodeBase));
+					}
+
+					return method;
+				}
+				catch (Exception e)
+				{
+					throw;
+				}
+				
+			}
 
 			public static void Postfix(ref string __result, Assembly __instance)
 			{
