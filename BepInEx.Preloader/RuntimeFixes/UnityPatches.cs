@@ -13,7 +13,8 @@ namespace BepInEx.Preloader.RuntimeFixes
 
 		public static void Apply()
 		{
-			HarmonyInstance = HarmonyLib.Harmony.CreateAndPatchAll(typeof(UnityPatches));
+			HarmonyInstance = HarmonyLib.Harmony.CreateAndPatchAll(typeof(GetLocation));
+			HarmonyInstance.PatchAll(typeof(GetCodeBase));
 
 			try
 			{
@@ -22,20 +23,28 @@ namespace BepInEx.Preloader.RuntimeFixes
 			catch { } //ignore everything, if it's thrown an exception, we're using an assembly that has already fixed this
 		}
 
-		[HarmonyPostfix]
-		[HarmonyPatch(typeof(Assembly), nameof(Assembly.Location), MethodType.Getter)]
-		public static void GetLocation(ref string __result, Assembly __instance)
+		[HarmonyPatch]
+		internal static class GetLocation
 		{
-			if (AssemblyLocations.TryGetValue(__instance.FullName, out string location))
-				__result = location;
+			public static MethodInfo TargetMethod() => AccessTools.DeclaredPropertyGetter(typeof(UnityPatches).Assembly.GetType(), nameof(Assembly.Location));
+
+			public static void Postfix(ref string __result, Assembly __instance)
+			{
+				if (AssemblyLocations.TryGetValue(__instance.FullName, out string location))
+					__result = location;
+			}
 		}
 
-		[HarmonyPostfix]
-		[HarmonyPatch(typeof(Assembly), nameof(Assembly.CodeBase), MethodType.Getter)]
-		public static void GetCodeBase(ref string __result, Assembly __instance)
+		[HarmonyPatch]
+		internal static class GetCodeBase
 		{
-			if (AssemblyLocations.TryGetValue(__instance.FullName, out string location))
-				__result = $"file://{location.Replace('\\', '/')}";
+			public static MethodInfo TargetMethod() => AccessTools.DeclaredPropertyGetter(typeof(UnityPatches).Assembly.GetType(), nameof(Assembly.CodeBase));
+
+			public static void Postfix(ref string __result, Assembly __instance)
+			{
+				if (AssemblyLocations.TryGetValue(__instance.FullName, out string location))
+					__result = $"file://{location.Replace('\\', '/')}";
+			}
 		}
 	}
 }
