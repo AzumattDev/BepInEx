@@ -39,10 +39,12 @@ namespace BepInEx.Preloader.RuntimeFixes
 
 					return method;
 				}
-				catch (Exception e)
+				catch (Exception)
 				{
-					throw;
+					// ignored
 				}
+				
+				return null;
 			}
 
 			public static void Postfix(ref string __result, Assembly __instance)
@@ -68,11 +70,12 @@ namespace BepInEx.Preloader.RuntimeFixes
 
 					return method;
 				}
-				catch (Exception e)
+				catch (Exception)
 				{
-					throw;
+					// ignored
 				}
-				
+
+				return null;
 			}
 
 			public static void Postfix(ref string __result, Assembly __instance)
