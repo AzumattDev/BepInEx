@@ -271,12 +271,37 @@ export DOORSTOP_MONO_DEBUG_SUSPEND="$debug_suspend"
 # Final setup
 doorstop_directory="${BASEDIR}/doorstop_libs"
 doorstop_name="libdoorstop_${arch}.${lib_extension}"
+doorstop_path="${doorstop_directory}/${doorstop_name}"
 
 export LD_LIBRARY_PATH="${doorstop_directory}:${LD_LIBRARY_PATH}"
 if [ -z "$LD_PRELOAD" ]; then
     export LD_PRELOAD="${doorstop_name}"
 else
     export LD_PRELOAD="${doorstop_name}:${LD_PRELOAD}"
+fi
+
+if [ "${os_type}" = "Darwin" ] && [ "${arch}" = "x64" ] && command -v arch >/dev/null 2>&1; then
+    exec arch -x86_64 /bin/sh -c '
+        doorstop_directory="$1"
+        doorstop_path="$2"
+        existing_dyld_library_path="$3"
+        existing_dyld_insert_libraries="$4"
+        shift 4
+
+        if [ -z "$existing_dyld_library_path" ]; then
+            export DYLD_LIBRARY_PATH="$doorstop_directory"
+        else
+            export DYLD_LIBRARY_PATH="$doorstop_directory:$existing_dyld_library_path"
+        fi
+
+        if [ -z "$existing_dyld_insert_libraries" ]; then
+            export DYLD_INSERT_LIBRARIES="$doorstop_path"
+        else
+            export DYLD_INSERT_LIBRARIES="$doorstop_path:$existing_dyld_insert_libraries"
+        fi
+
+        exec "$@"
+    ' sh "$doorstop_directory" "$doorstop_path" "$DYLD_LIBRARY_PATH" "$DYLD_INSERT_LIBRARIES" "$executable_path" "$@"
 fi
 
 export DYLD_LIBRARY_PATH="${doorstop_directory}:${DYLD_LIBRARY_PATH}"
