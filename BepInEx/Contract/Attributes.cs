@@ -45,7 +45,7 @@ namespace BepInEx
 			this.GUID = GUID;
 			this.Name = Name;
 
-			int suffix = Math.Min(Version.IndexOf('-'), Version.IndexOf('+'));
+			int suffix = Version.IndexOfAny(new[] { '-', '+' });
 			if (suffix >= 0)
 			{
 				VersionExtra = Version.Substring(suffix);
