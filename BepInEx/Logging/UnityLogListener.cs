@@ -34,11 +34,17 @@ namespace BepInEx.Logging
 				
 				try
 				{
+					// public wrapper first, private impl as backup (Unity 6 dropped the internal calls we used to target)
 					var writeMethod = realUnityLogWriter.GetMethod("WriteStringToUnityLog",
 						BindingFlags.Static | BindingFlags.Public,
 						null,
 						new[] { typeof(string) },
-						null);
+						null)
+						?? realUnityLogWriter.GetMethod("WriteStringToUnityLogImpl",
+							BindingFlags.Static | BindingFlags.NonPublic,
+							null,
+							new[] { typeof(string) },
+							null);
 
 					if (writeMethod != null)
 					{
@@ -77,22 +83,6 @@ namespace BepInEx.Logging
 					WriteStringToUnityLog = (Action<string>)Delegate.CreateDelegate(typeof(Action<string>), methodInfo);
 					break;
 				}
-			}
-
-			// Fix for Unity 6. Both methods previously targeted no longer use internal calls
-			if (WriteStringToUnityLog == null) 
-			{
-				try 
-				{
-					var type = Type.GetType("UnityEngine.UnityLogWriter, UnityEngine.CoreModule");
-					var methodInfo = type.GetMethod("WriteStringToUnityLogImpl", 
-						BindingFlags.Static | BindingFlags.NonPublic, 
-						null, 
-						new Type[] { typeof(string) }, 
-						null);
-					methodInfo.Invoke(null, new object[] { "" });
-					WriteStringToUnityLog = (Action<string>)Delegate.CreateDelegate(typeof(Action<string>), methodInfo);
-				} catch { }
 			}
 
 			if (WriteStringToUnityLog == null)
