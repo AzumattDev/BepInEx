@@ -102,7 +102,6 @@ namespace BepInEx.Bootstrap
 		/// </summary>
 		public static void Initialize(string gameExePath, bool startConsole = true, ICollection<LogEventArgs> preloaderLogEvents = null)
 		{
-			Logger.LogMessage($"Valheim Version: {GetValheimVersion()}");
 			if (_initialized)
 				return;
 
@@ -132,6 +131,8 @@ namespace BepInEx.Bootstrap
 				Logger.Sources.Add(TraceLogSource.CreateSource());
 
 			ReplayPreloaderLogs(preloaderLogEvents);
+
+			Logger.LogMessage($"Valheim Version: {GetValheimVersion()}");
 
 			// Add Unity log source only after replaying to prevent duplication in console
 			if (ConfigUnityLogging.Value)
