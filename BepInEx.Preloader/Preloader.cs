@@ -25,7 +25,7 @@ namespace BepInEx.Preloader
 		///     The log writer that is specific to the preloader.
 		/// </summary>
 		private static PreloaderConsoleListener PreloaderLog { get; set; }
-		private static string tsVersion = "5.4.2350";
+		private static string hexiumTsVersion = "5.4.2351";
 
 		public static bool IsPostUnity2017 { get; } = File.Exists(Path.Combine(Paths.ManagedPath, "UnityEngine.CoreModule.dll"));
 
@@ -59,7 +59,7 @@ namespace BepInEx.Preloader
 					ConsoleManager.SetConsoleTitle(consoleTile);
 
 				Logger.LogMessage($"{consoleTile} ({File.GetLastWriteTime(Paths.ExecutablePath)})");
-				Logger.LogMessage($"User is running BepInExPack Valheim version {tsVersion} from Thunderstore");
+				Logger.LogMessage($"User is running BepInExPack Valheim version {hexiumTsVersion}");
 
 				//See BuildInfoAttribute for more information about this section.
 				object[] attributes = typeof(BuildInfoAttribute).Assembly.GetCustomAttributes(typeof(BuildInfoAttribute), false);
