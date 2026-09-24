@@ -291,6 +291,8 @@ namespace BepInEx.Bootstrap
 			if (!Directory.Exists(Paths.PatcherPluginPath))
 				Directory.CreateDirectory(Paths.PatcherPluginPath);
 
+			int skippedCount = 0, failedCount = 0;
+
 			try
 			{
 				var productNameProp = typeof(Application).GetProperty("productName", BindingFlags.Public | BindingFlags.Static);
@@ -326,7 +328,11 @@ namespace BepInEx.Bootstrap
 					{
 						if (loadedVersion != null)
 						{
-							Logger.LogWarning($"Skipping [{pluginInfo}] because a newer version exists ({loadedVersion})");
+							if (pluginInfo.Metadata.Version == loadedVersion.Metadata.Version)
+								Logger.LogWarning($"Skipping [{pluginInfo}] ({pluginInfo.Metadata.GUID}) at {GetPluginRelativePath(pluginInfo)} because a duplicate of it was already loaded from {GetPluginRelativePath(loadedVersion)}");
+							else
+								Logger.LogWarning($"Skipping [{pluginInfo}] ({pluginInfo.Metadata.GUID}) at {GetPluginRelativePath(pluginInfo)} because a newer version exists ({loadedVersion} at {GetPluginRelativePath(loadedVersion)})");
+							skippedCount++;
 							continue;
 						}
 
@@ -336,7 +342,8 @@ namespace BepInEx.Bootstrap
 
 						if (invalidProcessName)
 						{
-							Logger.LogWarning($"Skipping [{pluginInfo}] because of process filters ({string.Join(", ", pluginInfo.Processes.Select(p => p.ProcessName).ToArray())})");
+							Logger.LogWarning($"Skipping [{pluginInfo}] ({pluginInfo.Metadata.GUID}) because of process filters ({string.Join(", ", pluginInfo.Processes.Select(p => p.ProcessName).ToArray())})");
+							skippedCount++;
 							continue;
 						}
 
@@ -354,13 +361,14 @@ namespace BepInEx.Bootstrap
 						dependencyDict.Remove(pluginInfo.Metadata.GUID);
 
 						var incompatiblePlugins = pluginInfo.Incompatibilities.Select(x => x.IncompatibilityGUID).Where(x => pluginsByGUID.ContainsKey(x)).ToArray();
-						string message = $@"Could not load [{pluginInfo}] because it is incompatible with: {string.Join(", ", incompatiblePlugins)}";
+						string message = $@"Could not load [{pluginInfo}] ({pluginInfo.Metadata.GUID}) because it is incompatible with: {string.Join(", ", incompatiblePlugins)}";
 						DependencyErrors.Add(message);
 						Logger.LogError(message);
+						failedCount++;
 					}
 					else if (PluginTargetsWrongBepin(pluginInfo))
 					{
-						string message = $@"Plugin [{pluginInfo}] targets a wrong version of BepInEx ({pluginInfo.TargettedBepInExVersion}) and might not work until you update";
+						string message = $@"Plugin [{pluginInfo}] ({pluginInfo.Metadata.GUID}) targets a wrong version of BepInEx ({pluginInfo.TargettedBepInExVersion}) and might not work until you update";
 						DependencyErrors.Add(message);
 						Logger.LogWarning(message);
 					}
@@ -409,9 +417,10 @@ namespace BepInEx.Bootstrap
 
 					if (dependsOnInvalidPlugin)
 					{
-						string message = $"Skipping [{pluginInfo}] because it has a dependency that was not loaded. See previous errors for details.";
+						string message = $"Skipping [{pluginInfo}] ({pluginInfo.Metadata.GUID}) because it has a dependency that was not loaded. See previous errors for details.";
 						DependencyErrors.Add(message);
 						Logger.LogWarning(message);
+						skippedCount++;
 						continue;
 					}
 
@@ -419,19 +428,20 @@ namespace BepInEx.Bootstrap
 					{
 						bool IsEmptyVersion(Version v) => v.Major == 0 && v.Minor == 0 && v.Build <= 0 && v.Revision <= 0;
 
-						string message = $@"Could not load [{pluginInfo}] because it has missing dependencies: {
+						string message = $@"Could not load [{pluginInfo}] ({pluginInfo.Metadata.GUID}) because it has missing dependencies: {
 							string.Join(", ", missingDependencies.Select(s => IsEmptyVersion(s.MinimumVersion) ? s.DependencyGUID : $"{s.DependencyGUID} (v{s.MinimumVersion} or newer)").ToArray())
 							}";
 						DependencyErrors.Add(message);
 						Logger.LogError(message);
 
 						invalidPlugins.Add(pluginGUID);
+						failedCount++;
 						continue;
 					}
 
 					try
 					{
-						Logger.LogInfo($"Loading [{pluginInfo}]");
+						Logger.LogInfo($"Loading [{pluginInfo}] ({pluginInfo.Metadata.GUID})");
 
 						if (!loadedAssemblies.TryGetValue(pluginInfo.Location, out var ass))
 							loadedAssemblies[pluginInfo.Location] = ass = Assembly.LoadFile(pluginInfo.Location);
@@ -446,7 +456,8 @@ namespace BepInEx.Bootstrap
 						invalidPlugins.Add(pluginGUID);
 						PluginInfos.Remove(pluginGUID);
 
-						Logger.LogError($"Error loading [{pluginInfo}] : {ex.Message}");
+						Logger.LogError($"Error loading [{pluginInfo}] ({pluginInfo.Metadata.GUID}) : {ex.Message}");
+						failedCount++;
 						if (ex is ReflectionTypeLoadException re)
 							Logger.LogDebug(TypeLoader.TypeLoadExceptionToString(re));
 						else
@@ -466,11 +477,21 @@ namespace BepInEx.Bootstrap
 				Logger.LogFatal(ex.ToString());
 			}
 
-			Logger.LogMessage("Chainloader startup complete");
+			Logger.LogMessage($"Chainloader startup complete ({_plugins.Count} loaded, {skippedCount} skipped, {failedCount} failed)");
 
 			_loaded = true;
 
 			SetIsModdedTrue();
+		}
+
+		private static string GetPluginRelativePath(PluginInfo pluginInfo)
+		{
+			string location = pluginInfo.Location ?? "";
+			string root = Paths.PluginPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+			string relative = location.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+				? location.Substring(root.Length)
+				: Path.GetFileName(location);
+			return relative.Replace('\\', '/');
 		}
 
 		/// <summary>
