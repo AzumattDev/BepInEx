@@ -25,7 +25,7 @@ namespace BepInEx.Preloader
 		///     The log writer that is specific to the preloader.
 		/// </summary>
 		private static PreloaderConsoleListener PreloaderLog { get; set; }
-		private static string hexiumTsVersion = "5.4.2351";
+		private static string hexiumTsVersion = "5.4.2360";
 
 		public static bool IsPostUnity2017 { get; } = File.Exists(Path.Combine(Paths.ManagedPath, "UnityEngine.CoreModule.dll"));
 
