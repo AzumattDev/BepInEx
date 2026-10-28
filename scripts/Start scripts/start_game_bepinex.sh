@@ -12,6 +12,14 @@
 # MACOS: name of the .app directory
 executable_name="valheim.x86_64"
 
+# MACOS: architectures to run the game as, most preferred first
+# arch runs the game as the first one the executable actually has, so an
+# x86_64-only game still starts under Rosetta with the default below.
+# Set this to "x86_64" or "x86_64,arm64" for a game or a loader whose native
+# dependencies have no arm64 build. It must name at least one architecture:
+# arch exits with "Can't find any plists" on an empty value.
+archpreference="arm64,x86_64"
+
 # All of the below can be overriden with command line args
 
 # General Config Options
@@ -272,18 +280,43 @@ export DOORSTOP_MONO_DEBUG_SUSPEND="$debug_suspend"
 doorstop_directory="${BASEDIR}/doorstop_libs"
 doorstop_name="libdoorstop_${arch}.${lib_extension}"
 
-export LD_LIBRARY_PATH="${doorstop_directory}:${LD_LIBRARY_PATH}"
-if [ -z "$LD_PRELOAD" ]; then
-    export LD_PRELOAD="${doorstop_name}"
-else
-    export LD_PRELOAD="${doorstop_name}:${LD_PRELOAD}"
-fi
+case ${os_type} in
+    Linux*)
+        export LD_LIBRARY_PATH="${doorstop_directory}:${corlib_dir}:${LD_LIBRARY_PATH}"
+        if [ -z "$LD_PRELOAD" ]; then
+            export LD_PRELOAD="${doorstop_name}"
+        else
+            export LD_PRELOAD="${doorstop_name}:${LD_PRELOAD}"
+        fi
 
-export DYLD_LIBRARY_PATH="${doorstop_directory}:${DYLD_LIBRARY_PATH}"
-if [ -z "$DYLD_INSERT_LIBRARIES" ]; then
-    export DYLD_INSERT_LIBRARIES="${doorstop_name}"
-else
-    export DYLD_INSERT_LIBRARIES="${doorstop_name}:${DYLD_INSERT_LIBRARIES}"
-fi
+        exec "$executable_path" "$@"
+    ;;
+    Darwin*)
+        dyld_library_path="${doorstop_directory}:${DYLD_LIBRARY_PATH}"
 
-exec "$executable_path" "$@"
+        # This script runs under /bin/sh, which is a platform binary, so a
+        # DYLD_INSERT_LIBRARIES that Steam sets for the game (its loader and
+        # overlay) is stripped before we get here. Steam passes the same list
+        # as STEAM_DYLD_INSERT_LIBRARIES for launch scripts like this one; keep
+        # it after Doorstop so the Steam overlay still works.
+        inherited_libraries="${DYLD_INSERT_LIBRARIES:-${STEAM_DYLD_INSERT_LIBRARIES}}"
+        if [ -z "$inherited_libraries" ]; then
+            dyld_insert_libraries="${doorstop_name}"
+        else
+            dyld_insert_libraries="${doorstop_name}:${inherited_libraries}"
+        fi
+
+        # Always go through arch. A universal executable runs as x86_64 whenever
+        # its parent does, and the parent is out of our hands when Steam or a
+        # launcher starts the script.
+        export ARCHPREFERENCE="${archpreference}"
+
+        # arch is a platform binary, so dyld strips every DYLD_* variable from
+        # its environment before it runs. Never export these: pass them to the
+        # game on the exec instead.
+        exec arch \
+            -e DYLD_LIBRARY_PATH="${dyld_library_path}" \
+            -e DYLD_INSERT_LIBRARIES="${dyld_insert_libraries}" \
+            "$executable_path" "$@"
+    ;;
+esac
